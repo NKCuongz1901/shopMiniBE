@@ -2,6 +2,7 @@ import { Body, Controller, Post, Request, Res, UseGuards } from "@nestjs/common"
 import { AuthService } from "./auth.service";
 import { Response } from "express";
 import { LocalAuthGuard } from "./local-auth.guard";
+import { RegisterAuthDto } from "./dto/register-auth.dto";
 
 @Controller('auth')
 export class AuthController {
@@ -19,5 +20,15 @@ export class AuthController {
     @Post('refresh')
     async refreshToken(@Body('refreshToken') refreshToken: string) {
         return this.authService.refreshToken(refreshToken);
+    }
+
+    @Post('register')
+    async register(@Body() registerAuthDto: RegisterAuthDto) {
+        return this.authService.register(registerAuthDto);
+    }
+
+    @Post('verify')
+    async verifyAccount(@Body() body: { email: string, code: string }) {
+        return this.authService.verityAccount(body.email, body.code);
     }
 }

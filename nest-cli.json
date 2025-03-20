@@ -4,7 +4,11 @@
   "sourceRoot": "apps",
   "compilerOptions": {
     "deleteOutDir": true,
-    "webpack": true
+    "webpack": true,
+    "assets": [
+      "user/src/mail/template/**/*"
+    ],
+    "watchAssets": true
   },
   "monorepo": true,
   "root": ".",
