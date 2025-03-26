@@ -12,19 +12,22 @@ import { User, UserSchema } from "../schemas/user.schemas";
 import { MailerModule } from "@nestjs-modules/mailer";
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { AuthController } from "./auth.controller";
-import { join } from 'path';
 @Module({
     imports: [
         PassportModule.register({ defaultStrategy: 'jwt' }),
         JwtModule.registerAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
+                global: true,
                 secret: configService.get<string>('JWT_SECRET'),
                 signOptions: {
-                    expiresIn: configService.get<string>('JWT_EXPIRED')
-                }
+                    expiresIn: configService.get<string>('JWT_EXPIRED'),
+
+                },
             }),
             inject: [ConfigService],
+
+
         }),
         MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
         MailerModule.forRootAsync({

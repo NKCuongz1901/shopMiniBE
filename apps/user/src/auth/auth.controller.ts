@@ -11,10 +11,11 @@ export class AuthController {
     @UseGuards(LocalAuthGuard)
     @Post('login')
     async login(@Request() req, @Res() res: Response) {
-        const tokens = await this.authService.login(req.user);
-        res.cookie('access_token', tokens.access_token, { httpOnly: true });
-        res.cookie('refresh_token', tokens.refresh_token, { httpOnly: true });
-        return res.json(tokens);
+        const result = await this.authService.login(req.user);
+        const { access_token, refresh_token } = result.data.tokens;
+        res.cookie('access_token', access_token, { httpOnly: true });
+        res.cookie('refresh_token', refresh_token, { httpOnly: true });
+        return res.json(result);
     }
 
     @Post('refresh')

@@ -30,10 +30,10 @@ export class AuthService {
 
     // Login function
     async login(user: any) {
-        const payload = { email: user.email, userId: user._id, role: user.role };
+        const payload = { email: user.email, userId: user._id, role: user.role, name: user.name };
         const access_token = this.jwtService.sign(payload, {
             secret: this.configService.get<string>('JWT_SECRET'),
-            expiresIn: this.configService.get<string>('JWT_EXPIRATION'),
+            expiresIn: this.configService.get<string>('JWT_EXPIRED'),
         });
         const refresh_token = this.jwtService.sign(payload, {
             secret: this.configService.get<string>('REFRESH_TOKEN_SECRET'),
@@ -41,7 +41,22 @@ export class AuthService {
         });
         user.refresh_token = refresh_token;
         await user.save();
-        return { access_token, refresh_token };
+        return {
+            success: true,
+            message: 'Login Success',
+            data: {
+                user: {
+                    id: user._id,
+                    name: user.name, // Đảm bảo user có field fullName
+                    email: user.email,
+                    role: user.role,
+                },
+                tokens: {
+                    access_token,
+                    refresh_token,
+                },
+            },
+        };
     }
 
     // RefreshToken function
