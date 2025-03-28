@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Category } from './schemas/category.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import slugify from 'slugify';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -21,10 +21,12 @@ export class CategoryService {
     return this.categoryModel.find()
   }
   // Find category by id
-  async findById(id: string): Promise<Category> {
-    const category = await this.categoryModel.findById(id);
-    if (!category) throw new NotFoundException('Category not found')
-    return category;
+  async findById(id: string): Promise<Category | null> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid product ID');
+    }
+    return this.categoryModel.findById(new Types.ObjectId(id)).exec();
+
   }
 
   // Update category
