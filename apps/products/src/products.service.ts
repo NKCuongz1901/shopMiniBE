@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product } from './schemas/product.schema';
-import { Model, Types } from 'mongoose';
+import { Document, Model, Types } from 'mongoose';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { SearchProductDto } from './dto/search-product.dto';
 
 @Injectable()
 export class ProductsService {
@@ -40,5 +41,22 @@ export class ProductsService {
     const product = await this.productModel.findByIdAndDelete(id);
     if (!product) throw new NotFoundException("Cant not find this product")
   }
+
+  // Search Products
+  async searchProduct(searchProductDto: SearchProductDto): Promise<(Product & Document)[]> {
+    const { productName, category, minPrice, maxPrice, sortBy } = searchProductDto;
+    const query: any = {};
+    if (productName) query.productName = { $regex: productName, $options: 'i' };
+    if (minPrice) query.price = { ...query.price, $gte: minPrice };
+    if (maxPrice) query.price = { ...query.price, $lte: maxPrice };
+    if (category) query.category = category;
+
+    let sortQuery = {};
+    if (sortBy === 'price') sortQuery = { price: 1 };
+    if (sortBy === '-price') sortQuery = { price: -1 };
+
+    return this.productModel.find(query).sort(sortQuery).exec();
+  }
+
 
 }
