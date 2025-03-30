@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Cart, CartSchema } from './schema/cart.schema';
 import { HttpModule } from '@nestjs/axios';
+import { RabbitMQModule } from 'libs/rabbitmq/rabbitmq.module';
 
 @Module({
   imports: [
@@ -20,8 +21,8 @@ import { HttpModule } from '@nestjs/axios';
       inject: [ConfigService]
     }),
     MongooseModule.forFeature([{ name: Cart.name, schema: CartSchema }]),
-    HttpModule
-
+    HttpModule,
+    RabbitMQModule
   ],
   controllers: [CartController],
   providers: [CartService],

@@ -4,6 +4,7 @@ import { ProductsService } from './products.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Product, ProductSchema } from './schemas/product.schema';
+import { RabbitMQModule } from 'libs/rabbitmq/rabbitmq.module';
 
 @Module({
   imports: [
@@ -19,6 +20,8 @@ import { Product, ProductSchema } from './schemas/product.schema';
       inject: [ConfigService]
     }),
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
+    RabbitMQModule
+
   ],
   controllers: [ProductsController],
   providers: [ProductsService],

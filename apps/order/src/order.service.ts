@@ -6,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { RabbitMQService } from 'libs/rabbitmq/rabbitmq.service';
+import { QUEUE_ORDER_TO_CART, QUEUE_ORDER_TO_PRODUCT } from 'libs/rabbitmq/rabbitmq.constants';
 
 
 @Injectable()
@@ -16,6 +18,7 @@ export class OrderService {
     @InjectModel(Order.name) private orderModel: Model<Order>,
     private configService: ConfigService,
     private httpService: HttpService,
+    private rabbitMQService: RabbitMQService,
   ) {
     this.productServiceUrl = this.configService.get('PRODUCT_SERVICE_URL');
     this.cartServiceUrl = this.configService.get('CART_SERVICE_URL');
@@ -93,6 +96,13 @@ export class OrderService {
       status: "PENDING"
     })
     await newOrder.save()
+    console.log("📤 Gửi message tới Product Service...");
+    await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_PRODUCT, {
+      pattern: 'decrease_stock',
+      data: orderItems,
+    });
+    console.log("✅ Đã gửi message đến Product Service!");
+
     return newOrder;
   }
 

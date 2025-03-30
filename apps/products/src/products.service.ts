@@ -1,14 +1,26 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product } from './schemas/product.schema';
 import { Document, Model, Types } from 'mongoose';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SearchProductDto } from './dto/search-product.dto';
+import { RabbitMQService } from 'libs/rabbitmq/rabbitmq.service';
+import { QUEUE_ORDER_TO_PRODUCT } from 'libs/rabbitmq/rabbitmq.constants';
 
 @Injectable()
-export class ProductsService {
-  constructor(@InjectModel(Product.name) private productModel: Model<Product>) { }
+export class ProductsService implements OnModuleInit {
+  constructor(
+    @InjectModel(Product.name) private productModel: Model<Product>,
+    private rabbitMQService: RabbitMQService
+  ) { }
+
+  onModuleInit() {
+    console.log("📡 Listening for messages from Order Service...");
+    this.rabbitMQService.consumeMessage(QUEUE_ORDER_TO_PRODUCT, async (data) => {
+      console.log("📥 Nhận message từ Order Service:", data);
+    });
+  }
 
   // Create product
   async createProduct(createProductDto: CreateProductDto): Promise<Product> {

@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Order, OrderSchema } from './schema/order.schema';
 import { HttpModule } from '@nestjs/axios';
+import { RabbitMQModule } from 'libs/rabbitmq/rabbitmq.module';
 
 
 @Module({
@@ -22,6 +23,7 @@ import { HttpModule } from '@nestjs/axios';
     }),
     MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
     HttpModule,
+    RabbitMQModule
   ],
   controllers: [OrderController],
   providers: [OrderService],
