@@ -9,7 +9,7 @@ async function bootstrap() {
   const urlMongo = configService.get('MONGODB_URI');
   app.setGlobalPrefix("api/v1");
   await app.listen(port);
-  console.log(port)
+  console.log("Cart service is running on port:", port)
 
 }
 bootstrap();
