@@ -15,11 +15,55 @@ export class ProductsService implements OnModuleInit {
     private rabbitMQService: RabbitMQService
   ) { }
 
-  onModuleInit() {
-    console.log("📡 Listening for messages from Order Service...");
-    this.rabbitMQService.consumeMessage(QUEUE_ORDER_TO_PRODUCT, async (data) => {
-      console.log("📥 Nhận message từ Order Service:", data);
-    });
+  async onModuleInit() {
+    await this.rabbitMQService.consumeMessage(QUEUE_ORDER_TO_PRODUCT, this.handleOrderMessage.bind(this))
+  }
+
+  // Xử lý message từ Order Service
+  private async handleOrderMessage(msg: any) {
+    console.log("📥 Nhận message từ Order Service:", msg);
+
+    if (!msg) {
+      console.error("❌ Lỗi: msg  bị undefined.");
+      return;
+    }
+    try {
+      // Chuyển `msg` (mảng byte) thành Buffer rồi parse JSON
+      const rawMessage = Buffer.from(msg).toString("utf-8");
+      console.log("✅ Dữ liệu đã chuyển thành chuỗi:", rawMessage);
+
+      const parsedMessage = JSON.parse(rawMessage);
+      console.log("✅ Parsed message:", parsedMessage);
+
+      // Lấy dữ liệu từ parsedMessage
+      const data = parsedMessage.data ? parsedMessage.data : parsedMessage;
+      console.log("✅ Dữ liệu cần xử lý:", data);
+
+      // Kiểm tra dữ liệu hợp lệ
+      const { productId, quantity } = data;
+      if (!productId || !quantity) {
+        throw new BadRequestException(`Thiếu dữ liệu cần thiết: productId hoặc quantity`);
+      }
+
+      // Tìm sản phẩm trong database
+      const product = await this.productModel.findById(new Types.ObjectId(productId));
+      if (!product) {
+        throw new NotFoundException(`Không tìm thấy sản phẩm có ID: ${productId}`);
+      }
+
+      // Kiểm tra số lượng còn lại
+      if (product.quantity < quantity) {
+        throw new BadRequestException(`Not enough stock of ${product.productName}`);
+      }
+
+      // Cập nhật số lượng
+      product.quantity -= quantity;
+      await product.save();
+
+      console.log(`✅ Already update quantity of ${product.productName}. Quantity left is : ${product.quantity}`);
+    } catch (error) {
+      console.error("❌ Lỗi xử lý message:", error);
+    }
   }
 
   // Create product

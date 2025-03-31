@@ -8,6 +8,7 @@ import { lastValueFrom } from 'rxjs';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RabbitMQService } from 'libs/rabbitmq/rabbitmq.service';
 import { QUEUE_ORDER_TO_CART, QUEUE_ORDER_TO_PRODUCT } from 'libs/rabbitmq/rabbitmq.constants';
+import { RabbitMQMessage } from 'libs/rabbitmq/rabbitmq.interface';
 
 
 @Injectable()
@@ -96,13 +97,18 @@ export class OrderService {
       status: "PENDING"
     })
     await newOrder.save()
-    console.log("📤 Gửi message tới Product Service...");
-    await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_PRODUCT, {
-      pattern: 'decrease_stock',
-      data: orderItems,
-    });
-    console.log("✅ Đã gửi message đến Product Service!");
 
+    for (const item of orderItems) {
+      const message: RabbitMQMessage = {
+        pattern: "update-product-stock",
+        data: {
+          productId: item.productId,
+          quantity: item.quantity
+        }
+      }
+      await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_PRODUCT, message);
+      console.log("📤 [Order Service] Sending message to Product Service:", message);
+    }
     return newOrder;
   }
 
