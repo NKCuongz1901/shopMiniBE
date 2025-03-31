@@ -98,6 +98,7 @@ export class OrderService {
     })
     await newOrder.save()
 
+    // Send message to product service
     for (const item of orderItems) {
       const message: RabbitMQMessage = {
         pattern: "update-product-stock",
@@ -109,6 +110,14 @@ export class OrderService {
       await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_PRODUCT, message);
       console.log("📤 [Order Service] Sending message to Product Service:", message);
     }
+    // send message to cart service
+    const messageToCart: RabbitMQMessage = {
+      pattern: "clear-cart",
+      data: {
+        userId: newOrder.userId,
+      }
+    }
+    await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_CART, messageToCart)
     return newOrder;
   }
 

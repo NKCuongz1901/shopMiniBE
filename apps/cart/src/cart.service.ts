@@ -1,21 +1,60 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Cart } from './schema/cart.schema';
 import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
+import { RabbitMQService } from 'libs/rabbitmq/rabbitmq.service';
+import { QUEUE_ORDER_TO_CART } from 'libs/rabbitmq/rabbitmq.constants';
 
 @Injectable()
-export class CartService {
+export class CartService implements OnModuleInit {
   private productServiceUrl?: string;
   constructor(
     @InjectModel(Cart.name) private CartModel: Model<Cart>,
     private configService: ConfigService,
     private httpService: HttpService,
+    private rabbitMQService: RabbitMQService,
   ) {
     this.productServiceUrl = this.configService.get<string>('PRODUCT_SERVICE_URL')
   }
+
+  async onModuleInit() {
+    await this.rabbitMQService.consumeMessage(QUEUE_ORDER_TO_CART, this.handleOrderMessage.bind(this))
+  }
+
+  // Handle receive message from order
+  async handleOrderMessage(msg: any) {
+    console.log("Receive message from order: ", msg);
+    if (!msg) {
+      throw new BadRequestException("Msg may be undefined");
+    }
+
+    try {
+      const rawMessage = Buffer.from(msg).toString("utf-8");
+      console.log("✅ Dữ liệu đã chuyển thành chuỗi:", rawMessage);
+
+      const parsedMessage = JSON.parse(rawMessage);
+      console.log("✅ Parsed message:", parsedMessage);
+
+      // Lấy dữ liệu từ parsedMessage
+      const data = parsedMessage.data ? parsedMessage.data : parsedMessage;
+      console.log("✅ Dữ liệu cần xử lý:", data);
+
+      const { userId } = data;
+      if (!userId) {
+        throw new BadRequestException("Missing userId data");
+      }
+      // Delete cart
+      await this.CartModel.deleteOne({ userId: new Types.ObjectId(userId) });
+      console.log("Cart is already delete");
+
+    } catch (error) {
+      console.log("Something be wrong", error);
+    }
+  }
+
   // Fetch product data 
   private async fetchProductData(productId) {
     try {

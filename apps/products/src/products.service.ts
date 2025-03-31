@@ -21,10 +21,10 @@ export class ProductsService implements OnModuleInit {
 
   // Xử lý message từ Order Service
   private async handleOrderMessage(msg: any) {
-    console.log("📥 Nhận message từ Order Service:", msg);
+    console.log(" Nhận message từ Order Service:", msg);
 
     if (!msg) {
-      console.error("❌ Lỗi: msg  bị undefined.");
+      console.error(" Lỗi: msg  bị undefined.");
       return;
     }
     try {
