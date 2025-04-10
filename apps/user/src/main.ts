@@ -10,6 +10,6 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1')
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   await app.listen(port);
-
+  console.log("User service is running on port: ", port);
 }
 bootstrap();

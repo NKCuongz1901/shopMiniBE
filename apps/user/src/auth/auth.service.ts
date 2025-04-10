@@ -50,6 +50,7 @@ export class AuthService {
                     name: user.name, // Đảm bảo user có field fullName
                     email: user.email,
                     role: user.role,
+
                 },
                 tokens: {
                     access_token,
@@ -120,5 +121,21 @@ export class AuthService {
         user.isActive = true;
         await user.save()
         return { message: 'Your account has been verified' };
+    }
+
+    // Fetch user
+    async getMe(user: any) {
+        return {
+            success: true,
+            message: 'Fetch user success',
+            data: {
+                user: {
+                    id: user.userId,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                },
+            }
+        }
     }
 }

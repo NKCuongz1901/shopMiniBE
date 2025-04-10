@@ -1,8 +1,11 @@
-import { Body, Controller, Post, Request, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Req, Request, Res, UseGuards } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { Response } from "express";
 import { LocalAuthGuard } from "./local-auth.guard";
 import { RegisterAuthDto } from "./dto/register-auth.dto";
+import { JwtAuthGuard } from "./jwt-auth.guard";
+import { RequestWithUser } from "./dto/request-user";
+
 
 @Controller('auth')
 export class AuthController {
@@ -31,5 +34,13 @@ export class AuthController {
     @Post('verify')
     async verifyAccount(@Body() body: { email: string, code: string }) {
         return this.authService.verityAccount(body.email, body.code);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('me')
+    async getMe(@Req() req: RequestWithUser) {
+        const user = req.user;
+        return this.authService.getMe(user);
+
     }
 }
