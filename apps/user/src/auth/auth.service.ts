@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
@@ -83,7 +83,10 @@ export class AuthService {
         const { email, name, password } = registerAuthDto;
         const existingUser = await this.userModel.findOne({ email });
         if (existingUser) {
-            throw new ConflictException('Email is already existing');
+            throw new HttpException({
+                success: false,
+                message: 'Email is already existing',
+            }, HttpStatus.CONFLICT); // 409
         }
         const hashPassword = await hashPasswordHelper(password);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -96,7 +99,10 @@ export class AuthService {
             isActive: false
         });
         await this.sendVerifyMail(user.email, verificationCode);
-        return { message: "Please check your email to verify your account" };
+        return {
+            success: true,
+            message: "Please check your email to verify your account"
+        };
     }
 
     // Sendmail
@@ -120,7 +126,10 @@ export class AuthService {
         }
         user.isActive = true;
         await user.save()
-        return { message: 'Your account has been verified' };
+        return {
+            success: true,
+            message: 'Your account has been verified'
+        };
     }
 
     // Fetch user
