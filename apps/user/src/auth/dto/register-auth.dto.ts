@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsEmail, IsMongoId, IsNotEmpty, IsString, MinLength } from "class-validator";
 
 export class RegisterAuthDto {
     @IsEmail({}, { message: 'Email invalid' })
@@ -13,3 +13,4 @@ export class RegisterAuthDto {
     @MinLength(6, { message: 'Password must have more than 6 character' })
     password: string;
 }
+

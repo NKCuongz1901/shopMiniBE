@@ -2,9 +2,10 @@ import { Body, Controller, Get, Post, Req, Request, Res, UseGuards } from "@nest
 import { AuthService } from "./auth.service";
 import { Response } from "express";
 import { LocalAuthGuard } from "./local-auth.guard";
-import { RegisterAuthDto } from "./dto/register-auth.dto";
+import {  RegisterAuthDto } from "./dto/register-auth.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { RequestWithUser } from "./dto/request-user";
+import { CreateUserDto } from "../dto/create-user.dto";
 
 
 @Controller('auth')
@@ -43,4 +44,9 @@ export class AuthController {
         return this.authService.getMe(user);
 
     }
+
+    @Post("user")
+    async createUser(@Body() createUserDto: CreateUserDto) {   
+    return this.authService.createUser(createUserDto); // truyền createUserDto vào hàm service
+}
 }

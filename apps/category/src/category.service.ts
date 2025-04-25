@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Category } from './schemas/category.schema';
 import { Model, Types } from 'mongoose';
@@ -38,9 +38,18 @@ export class CategoryService {
   }
 
   // delete category
-  async deleteCategory(id: string): Promise<void> {
+  async deleteCategory(id: string): Promise<{ status: number; message: string }> {
+    if(!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('ID không hợp lệ');
+    }
     const category = await this.categoryModel.findByIdAndDelete(id);
-    if (!category) throw new NotFoundException('Cant not found this category');
+  
+    if (!category){ throw new NotFoundException('Cant not found this category');}
+
+    return {
+      status: HttpStatus.OK,
+      message: 'Xoá danh mục thành công'
+    };
   }
 
 }
