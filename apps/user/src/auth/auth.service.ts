@@ -7,6 +7,7 @@ import { Model } from "mongoose";
 import { comparePassword, hashPasswordHelper } from "../helpers/services";
 import { MailerService } from "@nestjs-modules/mailer";
 import { RegisterAuthDto } from "./dto/register-auth.dto";
+import { CreateUserDto } from "../dto/create-user.dto";
 
 
 @Injectable()
@@ -103,6 +104,38 @@ export class AuthService {
             success: true,
             message: "Please check your email to verify your account"
         };
+    }
+
+     //Handle tao   user
+     async createUser(createUserDto: CreateUserDto) {
+        const { name,email,password,address,role  } = createUserDto;
+        const existingUser = await this.userModel.findOne({ email });
+        if (existingUser) {
+            throw new HttpException({
+                success: false,
+                message: 'Email is already existing',
+            }, HttpStatus.CONFLICT); // 409
+        }
+        const hashPassword = await hashPasswordHelper(password);
+        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const validRoles = ['ADMIN', 'USER'];
+    if (!validRoles.includes(role)) {
+        throw new HttpException({
+            success: false,
+            message: 'Invalid role. Role must be either "ADMIN" or "USER".',
+        }, HttpStatus.BAD_REQUEST); // 400
+    }
+        const user = await this.userModel.create({
+            email,
+            name,
+            password: hashPassword,
+            codeId: verificationCode,
+            codeExpired: new Date(Date.now() + 10 * 60 * 1000),
+            address,
+            role,// role mặc định là ADMIN,
+            isActive: true
+        });
+        return user;
     }
 
     // Sendmail

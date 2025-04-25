@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SearchProductDto } from './dto/search-product.dto';
+import { isValidObjectId } from 'mongoose';
 
 @Controller('product')
 export class ProductsController {
@@ -33,9 +34,14 @@ export class ProductsController {
     return this.productsService.updateProduct(id, updateProductDto);
   }
 
+  // @Delete(':id')
+  // deleteProduct(@Param('id') id: string) {
+  //   return this.productsService.deleteProduct(id);
+  // }
   @Delete(':id')
-  deleteProduct(@Param('id') id: string) {
-    return this.productsService.deleteProduct(id);
+  async deleteProduct(@Param('id') id: string) {
+    await this.productsService.deleteProduct(id);
+    return { message: 'Product deleted successfully' };
   }
 
 }

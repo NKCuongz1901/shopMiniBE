@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+
+import { BadRequestException, Delete, Injectable, NotFoundException, OnModuleInit, Param } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product } from './schemas/product.schema';
-import { Document, Model, Types } from 'mongoose';
+import { Document, isValidObjectId, Model, Types } from 'mongoose';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SearchProductDto } from './dto/search-product.dto';
@@ -92,10 +93,20 @@ export class ProductsService implements OnModuleInit {
     return updatedProduct;
   }
 
-  // Delete product
+  // // Delete product
+  // async deleteProduct(id: string): Promise<void> {
+  //   const product = await this.productModel.findByIdAndDelete(id);
+  //   if (!product) throw new NotFoundException("Cant not find this product")
+  // }
   async deleteProduct(id: string): Promise<void> {
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException('ID không hợp lệ');
+    }
+
     const product = await this.productModel.findByIdAndDelete(id);
-    if (!product) throw new NotFoundException("Cant not find this product")
+    if (!product) {
+      throw new NotFoundException("Cannot find this product");
+    }
   }
 
   // Search Products

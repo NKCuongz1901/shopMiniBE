@@ -45,7 +45,7 @@ export class OrderService {
       );
       return response.data;
     } catch (error) {
-      throw new NotFoundException("Cart is empty");
+      throw new NotFoundException("Cart not is empty");
     }
   }
 
