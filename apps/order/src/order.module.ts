@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -6,6 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Order, OrderSchema } from './schema/order.schema';
 import { HttpModule } from '@nestjs/axios';
 import { RabbitMQModule } from 'libs/rabbitmq/rabbitmq.module';
+import { InternalApiMiddleware } from './internal-api.middleware';
 
 
 @Module({
@@ -28,4 +29,10 @@ import { RabbitMQModule } from 'libs/rabbitmq/rabbitmq.module';
   controllers: [OrderController],
   providers: [OrderService],
 })
-export class OrderModule { }
+export class OrderModule {
+  configure(consumer: MiddlewareConsumer) {
+      consumer
+        .apply(InternalApiMiddleware)
+        .forRoutes('*'); // Áp dụng cho tất cả route
+    }
+ }
