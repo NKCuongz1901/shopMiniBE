@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { CategoryController } from './category.controller';
 import { CategoryService } from './category.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Category, CategorySchema } from './schemas/category.schema';
+import { InternalApiMiddleware } from './internal-api.middleware';
 
 @Module({
   imports: [
@@ -23,4 +24,10 @@ import { Category, CategorySchema } from './schemas/category.schema';
   controllers: [CategoryController],
   providers: [CategoryService],
 })
-export class CategoryModule { }
+export class CategoryModule {
+  configure(consumer: MiddlewareConsumer) {
+      consumer
+        .apply(InternalApiMiddleware)
+        .forRoutes('*'); // Áp dụng cho tất cả route
+    }
+ }
