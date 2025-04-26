@@ -16,4 +16,10 @@ export class OrderController {
     return this.orderService.getUserById(userId);
   }
 
+  @Get()
+  async getAllOrders() {
+    return this.orderService.getAllOrders();
+  }
+
+
 }
