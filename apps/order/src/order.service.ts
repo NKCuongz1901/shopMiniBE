@@ -126,4 +126,9 @@ export class OrderService {
     return this.orderModel.findOne({ userId: new Types.ObjectId(userId) });
   }
 
+  //
+  async getAllOrders() {
+    return this.orderModel.find({});
+  }
+
 }

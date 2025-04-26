@@ -81,6 +81,19 @@ export class UserService {
     await this.userModel.findByIdAndDelete(id);
     return { success: true, message: 'Tài khoản đã được xóa thành công' };
   }
+
+  async getUserById(id: string) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('ID không hợp lệ');
+    }
+  
+    const foundUser = await this.userModel.findById(id);
+    if (!foundUser) {
+      throw new BadRequestException('Không tìm thấy tài khoản người dùng');
+    }
+  
+    return foundUser;
+  }
   
 
 
