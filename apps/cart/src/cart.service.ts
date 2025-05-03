@@ -59,7 +59,11 @@ export class CartService implements OnModuleInit {
   private async fetchProductData(productId) {
     try {
       const response = await lastValueFrom(
-        this.httpService.get(`${this.productServiceUrl}/${productId}`)
+        this.httpService.get(`${this.productServiceUrl}/${productId}`,{
+          headers: {
+              'x-internal-api-key': process.env.INTERNAL_API_KEY || 'my-secret-key', // thêm header
+          },
+      })
       );
       return response.data;
     } catch (error) {
