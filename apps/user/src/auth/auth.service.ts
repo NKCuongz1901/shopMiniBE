@@ -172,7 +172,7 @@ export class AuthService {
             message: 'Fetch user success',
             data: {
                 user: {
-                    id: user.userId,
+                    id: user.userId || user.sub,
                     email: user.email,
                     name: user.name,
                     role: user.role,
