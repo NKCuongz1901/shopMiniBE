@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { CartService } from './cart.service';
 
 
@@ -15,5 +15,21 @@ export class CartController {
   async getCart(@Param('userId') userId: string) {
     return this.cartService.getCart(userId);
   }
+
+   @Patch('update')
+  async updateCart(@Body() body: { userId: string; productId: string; quantity: number }) {
+    return this.cartService.updateCartItemQuantity(body.userId, body.productId, body.quantity);
+  }
+
+  @Delete('remove')
+  async removeAllCart(@Body() body: {userId: string}) {
+    return this.cartService.removeAllCart(body.userId);
+  }
+
+  @Delete('remove-product')
+  async removeProductFromCart(@Body() body: { userId: string; productId: string}) {
+    return this.cartService.removeProductFromCart(body.userId, body.productId);
+  }
+
 
 }
