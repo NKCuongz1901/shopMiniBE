@@ -29,7 +29,7 @@ export class OrderService {
   private async fetchProductData(productId: string) {
     try {
       const response = await lastValueFrom(
-        this.httpService.get(`${this.productServiceUrl}/api/v1/product/${productId}`, {
+        this.httpService.get(`${this.productServiceUrl}/${productId}`, {
           headers: {
             'x-internal-api-key': process.env.INTERNAL_API_KEY || 'my-secret-key',
           },
@@ -45,7 +45,7 @@ export class OrderService {
   private async fetchCartData(userId) {
     try {
       const response = await lastValueFrom(
-        this.httpService.get(`${this.cartServiceUrl}/api/v1/cart/${userId}`, {
+        this.httpService.get(`${this.cartServiceUrl}/${userId}`, {
           headers: {
             'x-internal-api-key': process.env.INTERNAL_API_KEY || 'my-secret-key',
           },
@@ -62,6 +62,8 @@ export class OrderService {
     const { shippingAddress, phone, paymentMethod } = createOrderDto;
 
     const cart = await this.fetchCartData(userId);
+    console.log("Cart data:", cart);
+    // Check if cart is empty
     if (!cart || cart.items.length === 0) {
       throw new BadRequestException("Your cart is empty");
     }
@@ -77,6 +79,7 @@ export class OrderService {
     }[] = [];
     for (const item of cart.items) {
       const product = await this.fetchProductData(item.productId);
+      console.log("Product data:", product);
       if (!product) {
         throw new NotFoundException("Cant find this product");
       }
@@ -94,6 +97,7 @@ export class OrderService {
       });
       totalPrice += item.quantity * product.price;
     }
+    console.log("Order items:", orderItems);
 
     const newOrder = new this.orderModel({
       userId: new Types.ObjectId(userId),
@@ -104,8 +108,9 @@ export class OrderService {
       phone,
       status: "PENDING"
     })
+    console.log("New order:", newOrder);
     await newOrder.save()
-
+    console.log("New order saved:", newOrder);
     // Send message to product service
     for (const item of orderItems) {
       const message: RabbitMQMessage = {
@@ -115,8 +120,16 @@ export class OrderService {
           quantity: item.quantity
         }
       }
+
+     try {
+      console.log("Sending message to product service:", message);
+      console.log("QUEUE_ORDER_TO_PRODUCT:", QUEUE_ORDER_TO_PRODUCT);
       await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_PRODUCT, message);
-      console.log("📤 [Order Service] Sending message to Product Service:", message);
+      console.log("Message sent to product service successfully");
+       console.log("📤 [Order Service] Sending message to Product Service:", message);
+      } catch (error) {
+        console.error("❌ Failed to send message to product service:", error);
+    }
     }
     // send message to cart service
     const messageToCart: RabbitMQMessage = {
