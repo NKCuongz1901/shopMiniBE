@@ -2,13 +2,15 @@ import { Inject, Injectable } from "@nestjs/common";
 import { AmqpConnectionManager, ChannelWrapper } from "amqp-connection-manager";
 import { RabbitMQMessage } from "./rabbitmq.interface";
 
+
 @Injectable()
 export class RabbitMQService {
     private channel: ChannelWrapper
+    
     constructor(@Inject("RABBITMQ_CONNECTION") private connection: AmqpConnectionManager) {
         this.channel = this.connection.createChannel({
             json: true,
-            setup: (channel) => {
+            setup: async (channel) => {
                 console.log(' RabbitMQ channel setup');
             },
         });
@@ -17,8 +19,10 @@ export class RabbitMQService {
 
     // Send message to service
     async sendMessage(queue: string, message: RabbitMQMessage) {
+        console.log("Sending helllooo queue111:", queue);
         await this.channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)));
         console.log(`📩 Sent message to ${queue}`, message);
+        
     }
 
 

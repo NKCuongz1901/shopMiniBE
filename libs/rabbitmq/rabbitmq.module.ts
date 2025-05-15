@@ -7,7 +7,7 @@ import { RabbitMQService } from "./rabbitmq.service";
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            envFilePath: './libs/rabbitmq/.env'
+            envFilePath: './libs/rabbitmq/.env.example'
         }),
     ],
     providers: [
@@ -16,10 +16,9 @@ import { RabbitMQService } from "./rabbitmq.service";
             useFactory: async (configService: ConfigService) => {
                 const rabbitMQUrl = configService.get<string>('RABBITMQ_URL');
                 const connection = amqp.connect([rabbitMQUrl]);
-
-                connection.on('connect', () => console.log("Connect to rabbitMQ"));
-                connection.on('disconnect', (err) => console.error("disconnect from rabbitMQ", err));
-
+                console.log("RabbitMQ URL:", rabbitMQUrl);
+                connection.on('connect', () => console.log("✅onnect to rabbitMQ"));
+                connection.on('disconnect', (err) => console.error(" ❌ Channeldisconnect from rabbitMQ", err));
                 return connection;
             },
             inject: [ConfigService]
