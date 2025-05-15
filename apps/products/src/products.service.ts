@@ -1,4 +1,3 @@
-
 import { BadRequestException, Delete, Injectable, NotFoundException, OnModuleInit, Param } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product } from './schemas/product.schema';
@@ -113,14 +112,35 @@ export class ProductsService implements OnModuleInit {
   async searchProduct(searchProductDto: SearchProductDto): Promise<(Product & Document)[]> {
     const { productName, category, minPrice, maxPrice, sortBy } = searchProductDto;
     const query: any = {};
-    if (productName) query.productName = { $regex: productName, $options: 'i' };
-    if (minPrice) query.price = { ...query.price, $gte: minPrice };
-    if (maxPrice) query.price = { ...query.price, $lte: maxPrice };
-    if (category) query.category = category;
 
+    // Xử lý tìm kiếm theo tên sản phẩm
+    if (productName) {
+      query.productName = { $regex: productName, $options: 'i' };
+    }
+
+    // Xử lý tìm kiếm theo danh mục
+    if (category) {
+      query.category = category;
+    }
+
+    // Xử lý tìm kiếm theo khoảng giá
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      query.price = {};
+      if (minPrice !== undefined) {
+        query.price.$gte = minPrice;
+      }
+      if (maxPrice !== undefined) {
+        query.price.$lte = maxPrice;
+      }
+    }
+
+    // Xử lý sắp xếp
     let sortQuery = {};
-    if (sortBy === 'price') sortQuery = { price: 1 };
-    if (sortBy === '-price') sortQuery = { price: -1 };
+    if (sortBy === 'price') {
+      sortQuery = { price: 1 }; // Sắp xếp tăng dần
+    } else if (sortBy === '-price') {
+      sortQuery = { price: -1 }; // Sắp xếp giảm dần
+    }
 
     return this.productModel.find(query).sort(sortQuery).exec();
   }

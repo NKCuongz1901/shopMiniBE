@@ -29,10 +29,6 @@ import { InternalApiMiddleware } from './internal-api.middleware';
   exports: [ProductsService]
 
 })
-export class ProductsModule { 
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(InternalApiMiddleware)
-      .forRoutes('*'); // Áp dụng cho tất cả route
-  }
+export class ProductsModule {
+
 }

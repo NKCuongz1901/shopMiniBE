@@ -29,11 +29,11 @@ export class OrderService {
   private async fetchProductData(productId: string) {
     try {
       const response = await lastValueFrom(
-        this.httpService.get(`${this.productServiceUrl}/${productId}`,{
+        this.httpService.get(`${this.productServiceUrl}/${productId}`, {
           headers: {
-              'x-internal-api-key': process.env.INTERNAL_API_KEY || 'my-secret-key', // thêm header
+            'x-internal-api-key': process.env.INTERNAL_API_KEY || 'my-secret-key',
           },
-      })
+        })
       );
       return response.data;
     } catch (error) {
@@ -45,11 +45,11 @@ export class OrderService {
   private async fetchCartData(userId) {
     try {
       const response = await lastValueFrom(
-        this.httpService.get(`${this.cartServiceUrl}/${userId}`,{
+        this.httpService.get(`${this.cartServiceUrl}/${userId}`, {
           headers: {
-              'x-internal-api-key': process.env.INTERNAL_API_KEY || 'my-secret-key', // thêm header
+            'x-internal-api-key': process.env.INTERNAL_API_KEY || 'my-secret-key',
           },
-      })
+        })
       );
       return response.data;
     } catch (error) {
