@@ -25,35 +25,102 @@ export class CartService implements OnModuleInit {
   }
 
   // Handle receive message from order
-  async handleOrderMessage(msg: any) {
-    console.log("Receive message from order: ", msg);
-    if (!msg) {
-      throw new BadRequestException("Msg may be undefined");
-    }
+  // async handleOrderMessage(msg: any) {
+  //   console.log("Receive message from order: ", msg);
+  //   if (!msg) {
+  //     throw new BadRequestException("Msg may be undefined");
+  //   }
 
-    try {
-      const rawMessage = Buffer.from(msg).toString("utf-8");
-      console.log("✅ Dữ liệu đã chuyển thành chuỗi:", rawMessage);
+  //   try {
+  //     const rawMessage = Buffer.from(msg).toString("utf-8");
+  //     console.log("✅ Dữ liệu đã chuyển thành chuỗi:", rawMessage);
 
-      const parsedMessage = JSON.parse(rawMessage);
-      console.log("✅ Parsed message:", parsedMessage);
+  //     const parsedMessage = JSON.parse(rawMessage);
+  //     console.log("✅ Parsed message:", parsedMessage);
 
-      // Lấy dữ liệu từ parsedMessage
-      const data = parsedMessage.data ? parsedMessage.data : parsedMessage;
-      console.log("✅ Dữ liệu cần xử lý:", data);
+  //     // Lấy dữ liệu từ parsedMessage
+  //     const data = parsedMessage.data ? parsedMessage.data : parsedMessage;
+  //     console.log("✅ Dữ liệu cần xử lý:", data);
 
-      const { userId } = data;
-      if (!userId) {
-        throw new BadRequestException("Missing userId data");
-      }
-      // Delete cart
-      await this.CartModel.deleteOne({ userId: new Types.ObjectId(userId) });
-      console.log("Cart is already delete");
+  //     const { userId,productIds  } = data;
+  //     if (!userId) {
+  //       throw new BadRequestException("Missing userId data");
+  //     }
+  //     if (!productIds || !Array.isArray(productIds)) {
+  //     throw new BadRequestException("Missing productIds");
+  //   }
 
-    } catch (error) {
-      console.log("Something be wrong", error);
-    }
+  //   // Xóa những item có productId nằm trong productIds
+  //   const result = await this.CartModel.updateOne(
+  //     { userId: new Types.ObjectId(userId) },
+  //     {
+  //       $pull: {
+  //         items: {
+  //           productId: { $in: productIds }
+  //         }
+  //       }
+  //     }
+  //   );
+  //     // Delete cart
+  //     // await this.CartModel.deleteOne({ userId: new Types.ObjectId(userId) });
+  //     console.log("Cart is already delete");
+
+  //   } catch (error) {
+  //     console.log("Something be wrong", error);
+  //   }
+  // }
+
+  // Handle receive message from order
+async handleOrderMessage(msg: any) {
+  console.log("📥 Receive message from order:", msg);
+
+  if (!msg) {
+    throw new BadRequestException("Msg may be undefined");
   }
+
+  try {
+    const rawMessage = Buffer.from(msg).toString("utf-8");
+    const parsedMessage = JSON.parse(rawMessage);
+    const data = parsedMessage.data ?? parsedMessage;
+
+    const { userId, productIds } = data;
+
+    if (!userId) {
+      throw new BadRequestException("Missing userId");
+    }
+
+    if (!productIds || !Array.isArray(productIds)) {
+      throw new BadRequestException("Missing productIds");
+    }
+
+    const cart = await this.CartModel.findOne({
+      userId: new Types.ObjectId(userId),
+    });
+
+    if (!cart) {
+      console.log("🛒 No cart found for user, nothing to do.");
+      return;
+    }
+
+    // Loại bỏ các item có productId nằm trong productIds
+    cart.items = cart.items.filter(
+      (item) => !productIds.includes(item.productId.toString())
+    );
+
+    if (cart.items.length === 0) {
+      // Nếu giỏ hàng trống sau khi xóa → xóa luôn cart
+      await this.CartModel.deleteOne({ _id: cart._id });
+      console.log("🗑️ All items removed, cart deleted.");
+    } else {
+      // Nếu vẫn còn sản phẩm → cập nhật lại cart
+      await cart.save();
+      console.log("🧹 Selected items removed, cart updated.");
+    }
+  } catch (error) {
+    console.error("❌ Error handling cart message from order:", error);
+  }
+}
+
 
   // Fetch product data 
   private async fetchProductData(productId) {
@@ -114,8 +181,89 @@ export class CartService implements OnModuleInit {
 
   // Remove cart
   async removeAllCart(userId: string) {
-    return await this.CartModel.findByIdAndUpdate({ userId: new Types.ObjectId(userId) });
+    const userObjectId = new Types.ObjectId(userId);
+    const cart = await this.CartModel.findOne({ userId: userObjectId });
+    if (!cart) {
+      throw new NotFoundException("Cart not found");
+    }
+
+    await this.CartModel.deleteOne({ userId: userObjectId });
+    return { message: "Cart deleted successfully" };
   }
+
+  // Update quantity for a specific product in the cart
+async updateCartItemQuantity(userId: string, productId: string, newQuantity: number) {
+  const product = await this.fetchProductData(productId);
+  if (!product) {
+    throw new NotFoundException("Product not found");
+  }
+
+  const userObjectId = new Types.ObjectId(userId);
+  const productObjectId = new Types.ObjectId(productId);
+
+  const cart = await this.CartModel.findOne({ userId: userObjectId });
+  if (!cart) {
+    throw new NotFoundException("Cart not found");
+  }
+
+  const itemIndex = cart.items.findIndex((item) => item.productId.equals(productObjectId));
+  if (itemIndex === -1) {
+    throw new NotFoundException("Product not found in cart");
+  }
+
+  if (newQuantity === 0) {
+    // Xoá sản phẩm khỏi giỏ
+    cart.items.splice(itemIndex, 1);
+  } else {
+    if (newQuantity < 0) {
+      throw new BadRequestException("Quantity must be at least 0");
+    }
+
+    if (product.quantity < newQuantity) {
+      throw new BadRequestException("Not enough stock available");
+    }
+
+    const item = cart.items[itemIndex];
+    const price = item.price ?? 0;
+
+    item.quantity = newQuantity;
+    item.total = newQuantity * price;
+  }
+
+  // Cập nhật tổng tiền
+  cart.totalPrice = cart.items.reduce((sum, item) => sum + item.total, 0);
+
+  await cart.save();
+  return cart;
+}
+
+  async removeProductFromCart(userId: string, productId: string) {
+  const userObjectId = new Types.ObjectId(userId);
+  const productObjectId = new Types.ObjectId(productId);
+
+  const cart = await this.CartModel.findOne({ userId: userObjectId });
+  if (!cart) {
+    throw new NotFoundException("Cart not found");
+  }
+
+  // Xoá sản phẩm khỏi giỏ hàng
+  cart.items = cart.items.filter((item) => !item.productId.equals(productObjectId));
+
+  // Nếu không còn sản phẩm nào => xoá luôn cart
+  if (cart.items.length === 0) {
+    await this.CartModel.deleteOne({ userId: userObjectId });
+    return { message: "Cart is empty, deleted successfully" };
+  }
+
+  // Cập nhật lại totalPrice và lưu
+  cart.totalPrice = cart.items.reduce((sum, item) => sum + item.total, 0);
+  await cart.save();
+
+  return cart;
+}
+
+
+
 
 
 
