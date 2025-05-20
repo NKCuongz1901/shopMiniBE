@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Order } from './schema/order.schema';
 import { Model, Types } from 'mongoose';
@@ -7,14 +8,15 @@ import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RabbitMQService } from 'libs/rabbitmq/rabbitmq.service';
-import { QUEUE_ORDER_TO_CART, QUEUE_ORDER_TO_PRODUCT } from 'libs/rabbitmq/rabbitmq.constants';
+import { QUEUE_ORDER_TO_CART, QUEUE_ORDER_TO_PAYMENT, QUEUE_ORDER_TO_PRODUCT } from 'libs/rabbitmq/rabbitmq.constants';
 import { RabbitMQMessage } from 'libs/rabbitmq/rabbitmq.interface';
 
 
 @Injectable()
-export class OrderService {
+export class OrderService implements OnModuleInit {
   private productServiceUrl?: string;
   private cartServiceUrl?: string;
+  private paymentServiceUrl?: string;
   constructor(
     @InjectModel(Order.name) private orderModel: Model<Order>,
     private configService: ConfigService,
@@ -23,7 +25,66 @@ export class OrderService {
   ) {
     this.productServiceUrl = this.configService.get('PRODUCT_SERVICE_URL');
     this.cartServiceUrl = this.configService.get('CART_SERVICE_URL');
+    this.paymentServiceUrl = this.configService.get('PAYMENT_SERVICE_URL');
   }
+
+  async onModuleInit() {
+    await this.rabbitMQService.consumeMessage(QUEUE_ORDER_TO_PAYMENT, this.handleOrderMessage.bind(this));
+  }
+
+  async handleOrderMessage(msg: any) {
+  console.log("Receive message from order: ", msg);
+  if (!msg) {
+    throw new BadRequestException("Msg may be undefined");
+  }
+
+  try {
+    const rawMessage = Buffer.from(msg).toString("utf-8");
+    console.log("✅ Dữ liệu đã chuyển thành chuỗi:", rawMessage);
+
+    const parsedMessage = JSON.parse(rawMessage);
+    console.log("✅ Parsed message:", parsedMessage);
+
+    // Lấy dữ liệu bên trong 'data'
+    const { data } = parsedMessage;
+    if (!data) {
+      throw new BadRequestException("Missing data field");
+    }
+
+    const { orderId, status, amount } = data;
+
+    if (!orderId) {
+      throw new BadRequestException("Missing orderId");
+    }
+    if (!status) {
+      throw new BadRequestException("Missing status");
+    }
+
+    let newStatus = status;
+    if (status === "PAID") {
+      newStatus = "DELIVERED";
+    } else if (status === "FAILED") {
+      newStatus = "CANCELLED";
+    }
+
+    const updateResult = await this.orderModel.updateOne(
+      { _id: new Types.ObjectId(orderId) },
+      {
+        $set: {
+          status: newStatus,
+          amount,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    console.log("Order status updated result:", updateResult);
+  } catch (error) {
+    console.error("Error processing message:", error);
+  }
+}
+
+
 
   // fetch product data
   private async fetchProductData(productId: string) {
@@ -57,93 +118,8 @@ export class OrderService {
     }
   }
 
-  // Place order
-  // async placeOrder(userId: string, createOrderDto: CreateOrderDto) {
-  //   const { shippingAddress, phone, paymentMethod } = createOrderDto;
-
-  //   const cart = await this.fetchCartData(userId);
-  //   console.log("Cart data:", cart);
-  //   // Check if cart is empty
-  //   if (!cart || cart.items.length === 0) {
-  //     throw new BadRequestException("Your cart is empty");
-  //   }
-
-  //   let totalPrice = 0;
-  //   const orderItems: {
-  //     productId: string;
-  //     name: string;
-  //     image: string;
-  //     quantity: number;
-  //     price: number;
-  //     total: number;
-  //   }[] = [];
-  //   for (const item of cart.items) {
-  //     const product = await this.fetchProductData(item.productId);
-  //     console.log("Product data:", product);
-  //     if (!product) {
-  //       throw new NotFoundException("Cant find this product");
-  //     }
-  //     if (product.quantity < item.quantity) {
-  //       throw new BadRequestException("Not enough stock for this product")
-  //     }
-
-  //     orderItems.push({
-  //       productId: product._id,
-  //       name: product.productName,
-  //       image: product.image,
-  //       quantity: item.quantity,
-  //       price: product.price,
-  //       total: item.quantity * product.price,
-  //     });
-  //     totalPrice += item.quantity * product.price;
-  //   }
-  //   console.log("Order items:", orderItems);
-
-  //   const newOrder = new this.orderModel({
-  //     userId: new Types.ObjectId(userId),
-  //     items: orderItems,
-  //     totalPrice,
-  //     paymentMethod,
-  //     shippingAddress,
-  //     phone,
-  //     status: "PENDING"
-  //   })
-  //   console.log("New order:", newOrder);
-  //   await newOrder.save()
-  //   console.log("New order saved:", newOrder);
-  //   // Send message to product service
-  //   for (const item of orderItems) {
-  //     const message: RabbitMQMessage = {
-  //       pattern: "update-product-stock",
-  //       data: {
-  //         productId: item.productId,
-  //         quantity: item.quantity
-  //       }
-  //     }
-
-  //    try {
-  //     console.log("Sending message to product service:", message);
-  //     console.log("QUEUE_ORDER_TO_PRODUCT:", QUEUE_ORDER_TO_PRODUCT);
-  //     await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_PRODUCT, message);
-  //     console.log("Message sent to product service successfully");
-  //      console.log("📤 [Order Service] Sending message to Product Service:", message);
-  //     } catch (error) {
-  //       console.error("❌ Failed to send message to product service:", error);
-  //   }
-  //   }
-  //   // send message to cart service
-  //   const messageToCart: RabbitMQMessage = {
-  //     pattern: "clear-cart",
-  //     data: {
-  //       userId: newOrder.userId,
-  //     }
-  //   }
-  //   await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_CART, messageToCart)
-  //   return newOrder;
-  // }
-
-
-  async placeOrder(userId: string, createOrderDto: CreateOrderDto) {
+ 
+async placeOrder(userId: string, createOrderDto: CreateOrderDto) {
   const { shippingAddress, phone, paymentMethod, productIds } = createOrderDto;
 
   const cart = await this.fetchCartData(userId);
@@ -151,7 +127,6 @@ export class OrderService {
     throw new BadRequestException("Your cart is empty");
   }
 
-  // Lọc những item trong giỏ hàng mà nằm trong productIds
   const selectedCartItems = cart.items.filter(item =>
     productIds.includes(item.productId)
   );
@@ -162,14 +137,13 @@ export class OrderService {
 
   let totalPrice = 0;
   const orderItems: {
-  productId: string;
-  name: string;
-  image: string;
-  quantity: number;
-  price: number;
-  total: number;
-}[] = [];
-
+    productId: string;
+    name: string;
+    image: string;
+    quantity: number;
+    price: number;
+    total: number;
+  }[] = [];
 
   for (const item of selectedCartItems) {
     const product = await this.fetchProductData(item.productId);
@@ -222,13 +196,126 @@ export class OrderService {
     pattern: "clear-cart-items",
     data: {
       userId: newOrder.userId,
-      productIds, // chỉ xóa những sản phẩm đã thanh toán
+      productIds,
     },
   };
   await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_CART, messageToCart);
 
-  return newOrder;
+  // Nếu phương thức thanh toán là VNPay, tạo URL thanh toán và trả về cùng order
+  const orderId = (newOrder._id as Types.ObjectId).toString();
+  if (paymentMethod === 'BANK_TRANSFER') {
+    const body = {
+  amount: totalPrice * 100,          // VNPay yêu cầu nhân 100
+  orderId,
+  orderDescription: `Thanh toán đơn hàng #${orderId}`,
+};
+
+    // Tạo URL thanh toán VNPay
+    const paymentUrl = await lastValueFrom(
+      this.httpService.post(`${this.paymentServiceUrl}/create_payment_url`,body,  {
+        headers: {
+          'x-internal-api-key': process.env.INTERNAL_API_KEY || 'my-secret-key',
+        },
+      })
+    ).then(response => response.data.paymentUrl)
+      .catch(error => {
+        throw new BadRequestException("Error creating payment URL");
+      });
+
+    return { order: newOrder, paymentUrl };
+  }
+
+  // Nếu không phải VNPay thì trả về đơn hàng thôi
+  return { order: newOrder };
 }
+
+
+//   async placeOrder(userId: string, createOrderDto: CreateOrderDto) {
+//   const { shippingAddress, phone, paymentMethod, productIds } = createOrderDto;
+
+//   const cart = await this.fetchCartData(userId);
+//   if (!cart || cart.items.length === 0) {
+//     throw new BadRequestException("Your cart is empty");
+//   }
+
+//   // Lọc những item trong giỏ hàng mà nằm trong productIds
+//   const selectedCartItems = cart.items.filter(item =>
+//     productIds.includes(item.productId)
+//   );
+
+//   if (selectedCartItems.length === 0) {
+//     throw new BadRequestException("No valid items selected for checkout");
+//   }
+
+//   let totalPrice = 0;
+//   const orderItems: {
+//   productId: string;
+//   name: string;
+//   image: string;
+//   quantity: number;
+//   price: number;
+//   total: number;
+// }[] = [];
+
+
+//   for (const item of selectedCartItems) {
+//     const product = await this.fetchProductData(item.productId);
+//     if (!product) {
+//       throw new NotFoundException("Can't find this product");
+//     }
+//     if (product.quantity < item.quantity) {
+//       throw new BadRequestException("Not enough stock for this product");
+//     }
+
+//     const total = item.quantity * product.price;
+//     orderItems.push({
+//       productId: product._id,
+//       name: product.productName,
+//       image: product.image,
+//       quantity: item.quantity,
+//       price: product.price,
+//       total,
+//     });
+
+//     totalPrice += total;
+//   }
+
+//   const newOrder = new this.orderModel({
+//     userId: new Types.ObjectId(userId),
+//     items: orderItems,
+//     totalPrice,
+//     paymentMethod,
+//     shippingAddress,
+//     phone,
+//     status: "PENDING",
+//   });
+
+//   await newOrder.save();
+
+//   // Gửi tin nhắn cập nhật tồn kho
+//   for (const item of orderItems) {
+//     const message: RabbitMQMessage = {
+//       pattern: "update-product-stock",
+//       data: {
+//         productId: item.productId,
+//         quantity: item.quantity,
+//       },
+//     };
+//     await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_PRODUCT, message);
+//   }
+
+//   // Gửi tin nhắn để clear item đã đặt trong giỏ hàng
+//   const messageToCart: RabbitMQMessage = {
+//     pattern: "clear-cart-items",
+//     data: {
+//       userId: newOrder.userId,
+//       productIds, // chỉ xóa những sản phẩm đã thanh toán
+//     },
+//   };
+//   await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_CART, messageToCart);
+
+//   return newOrder;
+// }
 
 
   // Get order by userID

@@ -28,11 +28,12 @@ import { InternalApiMiddleware } from './internal-api.middleware';
   ],
   controllers: [OrderController],
   providers: [OrderService],
+  exports: [OrderService]
 })
 export class OrderModule {
-  configure(consumer: MiddlewareConsumer) {
-      consumer
-        .apply(InternalApiMiddleware)
-        .forRoutes('*'); // Áp dụng cho tất cả route
-    }
+  // configure(consumer: MiddlewareConsumer) {
+  //     consumer
+  //       .apply(InternalApiMiddleware)
+  //       .forRoutes('*'); // Áp dụng cho tất cả route
+  //   }
  }
