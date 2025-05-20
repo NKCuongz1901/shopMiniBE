@@ -1,0 +1,2 @@
+export const GLOBAL_CONFIG = 'GLOBAL_CONFIG';
+export const HASH_ALGORITHM = 'HASH_ALGORITHM';
