@@ -200,12 +200,12 @@ async placeOrder(userId: string, createOrderDto: CreateOrderDto) {
     },
   };
   await this.rabbitMQService.sendMessage(QUEUE_ORDER_TO_CART, messageToCart);
-
+ //totalPrice = totalPrice  100; // VNPay yêu cầu nhân 100
   // Nếu phương thức thanh toán là VNPay, tạo URL thanh toán và trả về cùng order
   const orderId = (newOrder._id as Types.ObjectId).toString();
   if (paymentMethod === 'BANK_TRANSFER') {
     const body = {
-  amount: totalPrice * 100,          // VNPay yêu cầu nhân 100
+  amount: totalPrice/100 * 100,          // VNPay yêu cầu nhân 100
   orderId,
   orderDescription: `Thanh toán đơn hàng #${orderId}`,
 };
@@ -326,6 +326,30 @@ async placeOrder(userId: string, createOrderDto: CreateOrderDto) {
   //
   async getAllOrders() {
     return this.orderModel.find({});
+  }
+
+  // Update order status
+  async updateOrderStatus(orderId: string, status: string) {
+    if (!orderId) {
+      throw new BadRequestException("Order ID is required");
+    }
+    if (!status) {
+      throw new BadRequestException("Status is required");
+    }
+    const order = await this.orderModel.findById(orderId);
+    if (!order) {
+      throw new NotFoundException("Order not found");
+    }
+
+    order.status = status;
+
+
+    await order.save();
+    console.log("Fetched order:", order.toObject());
+    console.log("Order status updated:", order);
+    console.log("Order status updated:", order.status);
+    // Gửi tin nhắn đến RabbitMQ để thông báo về việc cập nhật trạng thái đơn hàng
+    return order;
   }
 
 }

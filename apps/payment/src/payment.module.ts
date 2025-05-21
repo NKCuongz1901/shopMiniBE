@@ -1,5 +1,5 @@
 
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -12,6 +12,7 @@ import { ProductCode, VnpCurrCode ,VnpLocale,HashAlgorithm} from './enums/index'
 import { config } from 'process';
 import { HttpModule } from '@nestjs/axios';
 import { RabbitMQModule } from 'libs/rabbitmq/rabbitmq.module';
+import { InternalApiMiddleware } from './internal-api.middleware';
 
 // const globalConfig: GlobalConfig = {
 //   vnpayHost: 'https://sandbox.vnpayment.vn',
@@ -68,4 +69,10 @@ import { RabbitMQModule } from 'libs/rabbitmq/rabbitmq.module';
   ],
   exports: [PaymentService],
 })
-export class PaymentModule {}
+export class PaymentModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(InternalApiMiddleware)
+      .forRoutes('*'); // Áp dụng cho tất cả route
+  }
+}
